@@ -1,16 +1,27 @@
 #!/usr/bin/env bash
 
-if [ -x $1/bin/ruby ] then
+if [ -x $1/bin/ruby ]; then
   echo "ruby good"
+else
+  echo "no ruby found"
 fi
-if [ -f $1/config/httpd.conf ] then
+
+if [ -f $1/config/httpd.conf ]; then
   echo "httpd.conf good"
+else
+  echo "no httpd.conf found"
 fi
-if [ -f $1/config/shibboleth/shibboleth2.xml ] then
+
+if [ -f $1/config/shibboleth/shibboleth2.xml ]; then
   echo "config/shibboleth/shibboleth2.xml good"
+else
+  echo "no config/shibboleth/shibboleth2.xml found"
 fi
-if [ -f $1/config/shibboleth/shibboleth2.xml.erb ] then
+
+if [ -f $1/config/shibboleth/shibboleth2.xml.erb ]; then
   echo "config/shibboleth/shibboleth2.xml.erb good"
+else
+  echo "no config/shibboleth/shibboleth2.xml.erb found"
 fi
 
 if [ -x $1/bin/ruby ] && [ -f $1/config/httpd.conf ] && ([ -f $1/config/shibboleth/shibboleth2.xml ] || [ -f $1/config/shibboleth/shibboleth2.xml.erb ]); then
