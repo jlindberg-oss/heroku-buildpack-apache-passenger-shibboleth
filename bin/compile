@@ -3,11 +3,11 @@
 set -e
 
 STACK=${STACK:-heroku-16}
-PASSENGER_ROOT='/opt/passenger'
+PASSENGER_ROOT='/app/opt/passenger'
 PASSENGER_VERSION='5.1.11'
 SHIBBOLETH_SP_VERSION='2.6.1'
 
-cd /opt
+cd /app/opt
 mkdir passenger
 
 cd $1
