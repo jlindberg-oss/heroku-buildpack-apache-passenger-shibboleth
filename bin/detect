@@ -3,27 +3,21 @@
 set -x
 
 if [ -x $1/bin/ruby ]; then
-  echo "ruby good"
+  echo "ruby found"
 else
-  echo "no ruby found"
+  echo "no ruby found at ${1}/bin/ruby"
 fi
 
 if [ -f $1/config/httpd.conf ]; then
-  echo "httpd.conf good"
+  echo "httpd.conf found"
 else
-  echo "no httpd.conf found"
+  echo "no httpd.conf found at ${1}/config/httpd.conf"
 fi
 
-if [ -f $1/config/shibboleth/shibboleth2.xml ]; then
-  echo "config/shibboleth/shibboleth2.xml good"
+if ([ -f $1/config/shibboleth/shibboleth2.xml ] || [ -f $1/config/shibboleth/shibboleth2.xml.erb ]); then
+  echo "config/shibboleth/shibboleth2.xml or config/shibboleth/shibboleth2.xml.erb found"
 else
-  echo "no config/shibboleth/shibboleth2.xml found"
-fi
-
-if [ -f $1/config/shibboleth/shibboleth2.xml.erb ]; then
-  echo "config/shibboleth/shibboleth2.xml.erb good"
-else
-  echo "no config/shibboleth/shibboleth2.xml.erb found"
+  echo "no config/shibboleth/shibboleth2.xml nor config/shibboleth/shibboleth2.xml.erb found at ${1}"
 fi
 
 if [ -x $1/bin/ruby ] && [ -f $1/config/httpd.conf ] && ([ -f $1/config/shibboleth/shibboleth2.xml ] || [ -f $1/config/shibboleth/shibboleth2.xml.erb ]); then
