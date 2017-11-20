@@ -2,12 +2,23 @@
 
 set -e
 
-STACK=${STACK:-cedar-14}
+STACK=${STACK:-heroku-16}
+PASSENGER_ROOT='/app/opt/passenger'
+PASSENGER_VERSION='5.1.11'
+SHIBBOLETH_SP_VERSION='2.6.1'
+
 
 cd $1
-curl -s https://s3.amazonaws.com/uvize-buildpack/packages/${STACK}/apache-2.4.12.tar.gz       | tar xz
-curl -s https://s3.amazonaws.com/uvize-buildpack/packages/${STACK}/passenger-4.0.59.tar.gz    | tar xz
-curl -s https://s3.amazonaws.com/uvize-buildpack/packages/${STACK}/shibboleth-sp-2.5.4.tar.gz | tar xz
+# curl -s https://s3.amazonaws.com/uvize-buildpack/packages/${STACK}/apache-2.4.12.tar.gz       | tar xz
+curl -s https://s3.amazonaws.com/vdtar/passenger-${PASSENGER_VERSION}.tar.gz | tar xz
+
+mkdir ${PASSENGER_ROOT}
+curl -s https://s3.amazonaws.com/vdtar/shibboleth-sp-${SHIBBOLETH_SP_VERSION}.tar.gz | tar xz -C ${PASSENGER_ROOT}
+
+PATH==${PASSENGER_ROOT}/passenger-${PASSENGER_VERSION}/bin:$PATH
+export PATH
+passenger-install-apache2-module
+
 echo "-----> apache-passenger-shibboleth-buildpack: Installed Apache, Passenger, and Shibboleth for ${STACK} to $1/opt"
 
 exit 0
