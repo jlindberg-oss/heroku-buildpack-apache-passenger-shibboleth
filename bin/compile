@@ -23,14 +23,14 @@ curl -s https://s3.amazonaws.com/vdtar/shibboleth-sp-${SHIBBOLETH_SP_VERSION}.ta
 PATH==${PASSENGER_ROOT}/passenger-${PASSENGER_VERSION}/bin:$PATH
 export PATH
 
-sudo chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems/passenger-5.1.2"
-sudo chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems"
-sudo chmod o+x "$1/vendor/bundle/ruby/2.3.0"
-sudo chmod o+x "$1/vendor/bundle/ruby"
-sudo chmod o+x "$1/vendor/bundle"
-sudo chmod o+x "$1/vendor"
-sudo chmod o+x "$1"
-sudo chmod o+x "/tmp"
+chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems/passenger-5.1.2"
+chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems"
+chmod o+x "$1/vendor/bundle/ruby/2.3.0"
+chmod o+x "$1/vendor/bundle/ruby"
+chmod o+x "$1/vendor/bundle"
+chmod o+x "$1/vendor"
+chmod o+x "$1"
+chmod o+x "/tmp"
 
 passenger-install-apache2-module
 
