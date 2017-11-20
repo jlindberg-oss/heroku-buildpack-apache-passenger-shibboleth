@@ -32,6 +32,11 @@ chmod o+x "$1/vendor"
 chmod o+x "$1"
 chmod o+x "/tmp"
 
+apt-get install apache2-mpm-worker
+apt-get install apache2-dev
+apt-get install libapr1-dev
+apt-get install libaprutil1-dev
+
 passenger-install-apache2-module
 
 echo "-----> apache-passenger-shibboleth-buildpack: Installed Apache, Passenger, and Shibboleth for ${STACK} to $1/opt"
