@@ -14,30 +14,30 @@ SHIBBOLETH_SP_VERSION='2.6.1'
 #-----> Downloading and Unzipping Passenger ${PASSENGER_VERSION} and Shibboleth ${SHIBBOLETH_SP_VERSION}
 cd $1
 
-curl -s https://s3.amazonaws.com/vdtar/httpd-${APACHE_VERSION}.tar.gz       | tar xz
-curl -s https://s3.amazonaws.com/vdtar/passenger-${PASSENGER_VERSION}.tar.gz | tar xz
+# curl -s https://s3.amazonaws.com/vdtar/httpd-${APACHE_VERSION}.tar.gz       | tar xz
+# curl -s https://s3.amazonaws.com/vdtar/passenger-${PASSENGER_VERSION}.tar.gz | tar xz
 curl -s https://s3.amazonaws.com/vdtar/shibboleth-sp-${SHIBBOLETH_SP_VERSION}.tar.gz | tar xz
 #-C ${PASSENGER_ROOT}
 
 #-----> Exporting Passenger to PATH and relaxing permissions for Apache
-PATH==${PASSENGER_ROOT}/passenger-${PASSENGER_VERSION}/bin:$PATH
-export PATH
+# PATH==${PASSENGER_ROOT}/passenger-${PASSENGER_VERSION}/bin:$PATH
+# export PATH
 
-chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems/passenger-5.1.2"
-chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems"
-chmod o+x "$1/vendor/bundle/ruby/2.3.0"
-chmod o+x "$1/vendor/bundle/ruby"
-chmod o+x "$1/vendor/bundle"
-chmod o+x "$1/vendor"
-chmod o+x "$1"
-chmod o+x "/tmp"
+# chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems/passenger-5.1.2"
+# chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems"
+# chmod o+x "$1/vendor/bundle/ruby/2.3.0"
+# chmod o+x "$1/vendor/bundle/ruby"
+# chmod o+x "$1/vendor/bundle"
+# chmod o+x "$1/vendor"
+# chmod o+x "$1"
+# chmod o+x "/tmp"
 
-apt-get install apache2-mpm-worker
-apt-get install apache2-dev
-apt-get install libapr1-dev
-apt-get install libaprutil1-dev
-
-passenger-install-apache2-module
+# apt-get install apache2-mpm-worker
+# apt-get install apache2-dev
+# apt-get install libapr1-dev
+# apt-get install libaprutil1-dev
+#
+# passenger-install-apache2-module
 
 echo "-----> apache-passenger-shibboleth-buildpack: Installed Apache, Passenger, and Shibboleth for ${STACK} to $1/opt"
 
