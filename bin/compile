@@ -3,20 +3,35 @@
 #turn on echo to actually output to console
 set -e
 
+#-----> Setting temporary variables
 STACK=${STACK:-heroku-16}
 PASSENGER_ROOT=$1
+APACHE_VERSION='2.4.29'
 PASSENGER_VERSION='5.1.11'
 SHIBBOLETH_SP_VERSION='2.6.1'
 
+
+#-----> Downloading and Unzipping Passenger ${PASSENGER_VERSION} and Shibboleth ${SHIBBOLETH_SP_VERSION}
 cd $1
 
-# curl -s https://s3.amazonaws.com/uvize-buildpack/packages/${STACK}/apache-2.4.12.tar.gz       | tar xz
+curl -s https://s3.amazonaws.com/vdtar/httpd-${APACHE_VERSION}.tar.gz       | tar xz
 curl -s https://s3.amazonaws.com/vdtar/passenger-${PASSENGER_VERSION}.tar.gz | tar xz
 curl -s https://s3.amazonaws.com/vdtar/shibboleth-sp-${SHIBBOLETH_SP_VERSION}.tar.gz | tar xz
 #-C ${PASSENGER_ROOT}
 
+#-----> Exporting Passenger to PATH and relaxing permissions for Apache
 PATH==${PASSENGER_ROOT}/passenger-${PASSENGER_VERSION}/bin:$PATH
 export PATH
+
+sudo chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems/passenger-5.1.2"
+sudo chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems"
+sudo chmod o+x "$1/vendor/bundle/ruby/2.3.0"
+sudo chmod o+x "$1/vendor/bundle/ruby"
+sudo chmod o+x "$1/vendor/bundle"
+sudo chmod o+x "$1/vendor"
+sudo chmod o+x "$1"
+sudo chmod o+x "/tmp"
+
 passenger-install-apache2-module
 
 echo "-----> apache-passenger-shibboleth-buildpack: Installed Apache, Passenger, and Shibboleth for ${STACK} to $1/opt"
