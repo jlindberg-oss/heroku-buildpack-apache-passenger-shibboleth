@@ -1,0 +1,205 @@
+#!/usr/bin/env bash
+
+####### Configure environment
+set -e			# fail fast
+set -o pipefail	# don't ignore exit codes when piping output
+# set -x		# enable debugging
+
+# Configure directories
+BUILD_DIR=$1	# the location of the app
+CACHE_DIR=$2	# a location the buildpack can use to cache build artifacts between builds
+ENV_DIR=$3		# contains a file for each of the application’s configuration variables
+
+STACK=${STACK:-heroku-16}
+APACHE_PATH="apache"
+
+PASSENGER_VERSION='5.1.11'
+SHIBBOLETH_SP_VERSION='2.6.1'
+
+BUILDPACK_HOME=$(cd $(dirname $0); cd ..; pwd)	# buildpack directory
+
+# Load some convenience functions like info(), echo(), and indent()
+source "$BUILDPACK_HOME/scripts/common.sh"
+trap build_failed ERR # Provide hook to deal with errors
+
+# apt-get install --yes wget
+# # The following packages are required to compile the Shibboleth SP daemon and the Shibboleth Apache module.
+#
+# apt-get install --yes gcc g++ make libssl0.9.8 libssl-dev libcurl3 libcurl3-dev libxerces-c28 libxerces-c2-dev libxml-security-c14 libxml-security-c-dev apache2-threaded-dev
+# Finally, define, create and change into a build directory to execute the build process.
+
+export MYBUILD=~/shibsp-build
+mkdir -p $MYBUILD
+cd $MYBUILD
+
+LOG4SHIB_VERSION='1.0.9'
+XMLTOOLING_VERSION='1.6.2'
+OPENSAML_VERSION='2.6.1'
+SHIBBOLETH_VERSION='2.6.1'
+
+curl -s https://dl.bintray.com/boostorg/release/1.65.1/source/boost_1_65_1.tar.gz | tar xz
+curl -s https://shibboleth.net/downloads/log4shib/latest/log4shib-${LOG4SHIB_VERSION}.tar.gz | tar xz
+curl -s https://shibboleth.net/downloads/c++-opensaml/latest/xmltooling-${XMLTOOLING_VERSION}.tar.gz | tar xz
+curl -s https://shibboleth.net/downloads/c++-opensaml/latest/opensaml-${OPENSAML_VERSION}.tar.gz | tar xz
+curl -s https://shibboleth.net/downloads/service-provider/latest/shibboleth-sp-${SHIBBOLETH_VERSION}.tar.gz | tar xz
+# tar xvfz log4shib-${LOG4SHIB_VERSION}.tar.gz
+# tar xvfz xmltooling-${XMLTOOLING_VERSION}.tar.gz
+# tar xvfz opensaml-${OPENSAML_VERSION}.tar.gz
+# tar xvfz shibboleth-sp-${SHIBBOLETH_VERSION}.tar.gz
+
+export SHIB_HOME=/app/shibboleth-sp-${SHIBBOLETH_VERSION}
+mkdir -p $SHIB_HOME
+pushd $MYBUILD/log4shib-${LOG4SHIB_VERSION}/ && ./configure --disable-static --disable-doxygen --prefix=$SHIB_HOME && make && make install && popd
+pushd $MYBUILD/xmltooling-${XMLTOOLING_VERSION}/ && ./configure --with-log4shib=$SHIB_HOME --prefix=$SHIB_HOME -C && make && make install && popd
+pushd $MYBUILD/opensaml-${OPENSAML_VERSION}/ && ./configure --prefix=$SHIB_HOME --with-log4shib=$SHIB_HOME -C && make && make install && popd
+pushd $MYBUILD/shibboleth-${SHIBBOLETH_VERSION}/ && ./configure --with-saml=$SHIB_HOME --enable-apache-22 --with-log4shib=$SHIB_HOME --with-xmltooling=$SHIB_HOME --prefix=$SHIB_HOME -C && make && make install && popd
+
+echo "-----> Downloading and Unzipping Apache ${PASSENGER_VERSION} and Shibboleth ${SHIBBOLETH_SP_VERSION}"
+cd $BUILD_DIR
+
+if [ -f "$BUILD_DIR/.apache/.apache.cfg" ]; then
+	info "Found $BUILD_DIR/.apache/.apache.cfg"
+	source "$BUILD_DIR/.apache/.apache.cfg"
+fi
+
+if [ -z "$APACHE_VERSION" ]; then
+	APACHE_VERSION="2.4.29"
+fi
+
+if [ -z "$APACHE_APR_VERSION" ]; then
+	APACHE_APR_VERSION="1.6.3"
+fi
+
+if [ -z "$APACHE_APR_UTIL_VERSION" ]; then
+	APACHE_APR_UTIL_VERSION="1.6.1"
+fi
+
+PREFIX_PATH="/app/apache"
+if [ -z "$CONFIGURE_ARGS" ]; then
+	CONFIGURE_ARGS="--prefix=$PREFIX_PATH \
+		--enable-dav \
+		--enable-dav-lock \
+		--with-included-apr \
+		--enable-layout=GNU \
+		--enable-mods-shared=all \
+		--enable-rewrite \
+		--enable-deflate \
+		--with-mpm=event \
+    --with-included-apr"
+else
+	CONFIGURE_ARGS="--prefix=$PREFIX_PATH $CONFIGURE_ARGS"
+fi
+
+# Load config vars into environment
+export_env_dir $ENV_DIR
+
+CACHED_APACHE_VERSION=$(cat $CACHE_DIR/apache/.apache-version 2>/dev/null || true)
+if [ "$CACHED_APACHE_VERSION" != "$APACHE_VERSION" ]; then
+	info "Apache version changed since last build; old: $CACHED_APACHE_VERSION -> new: $APACHE_VERSION"
+	APACHE_SRC_DIR="httpd-$APACHE_VERSION"
+
+	info "Purge cached Apache..."
+	rm -rf "$CACHE_DIR/apache"
+
+
+  cd "$BUILD_DIR"
+
+  info "Downloading Apache $APACHE_VERSION..."
+	curl -L http://www.us.apache.org/dist/httpd/httpd-$APACHE_VERSION.tar.gz | tar xz
+	# curl -L http://www.us.apache.org/dist/httpd/httpd-$APACHE_VERSION-deps.tar.gz | tar xz
+
+	cd "$APACHE_SRC_DIR"
+
+  # mkdir "./srclib" && mkdir "./srclib/apr" && mkdir "./srclib/apr-util"
+  # chmod o+x "./srclib" && chmod o+x "./srclib/apr" && chmod o+x "./srclib/apr-util"
+
+  cd srclib
+  info "Downloading Apache APR ${APACHE_APR_VERSION} and APR-Util ${APACHE_APR_UTIL_VERSION}..."
+  curl -s http://apache.mesi.com.ar/apr/apr-${APACHE_APR_VERSION}.tar.gz | tar xz
+  curl -s http://apache.mesi.com.ar/apr/apr-util-${APACHE_APR_UTIL_VERSION}.tar.gz | tar xz
+  mv apr-${APACHE_APR_VERSION} apr
+  mv apr-util-${APACHE_APR_UTIL_VERSION} apr-util
+  cd ..
+
+	head "Configuring Apache with args: $CONFIGURE_ARGS"
+	./configure $CONFIGURE_ARGS 2>&1 | indent
+	head "Compiling with Make"
+	make -s -j 9 2>&1 | indent
+	head "Installing with Make"
+	make install -s | indent
+
+	info "Saving Apache version file..."
+	echo $APACHE_VERSION > "$PREFIX_PATH/.apache-version"
+
+	info "Saving Apache installation to cache..."
+	cp -R "$PREFIX_PATH" "$CACHE_DIR"
+
+	info "Cleaning up Apache source files..."
+	cd ..
+	rm -rf "$APACHE_SRC_DIR"
+fi
+
+info "Copying Apache $APACHE_VERSION into $BUILD_DIR ..."
+cp -R "$CACHE_DIR/apache" "$BUILD_DIR"
+
+if [ -d "$BUILD_DIR/.apache/conf" ]; then
+	info "Installing configuration files..."
+	cp -R $BUILD_DIR/.apache/conf/* $BUILD_DIR/apache/etc/apache2
+fi
+
+info "Installing startup script..."
+cp "$BUILDPACK_HOME/scripts/boot.sh" "$BUILD_DIR/boot.sh"
+chmod +x "$BUILD_DIR/boot.sh"
+
+info "Building runtime environment"
+mkdir -p $BUILD_DIR/.profile.d
+echo "export PATH=\"/app/apache/bin:/app/apache/sbin:\$PATH\";" > $BUILD_DIR/.profile.d/apache.sh
+
+
+# apt-get install --yes libapache2-mod-shib2
+# a2enmod auth_basic
+# a2enmod shib2
+# a2enmod ssl
+/etc/init.d/apache2 restart
+
+# curl -s https://s3.amazonaws.com/vdtar/httpd-${APACHE_VERSION}.tar.gz       | tar xz
+# curl -s https://s3.amazonaws.com/vdtar/passenger-${PASSENGER_VERSION}.tar.gz | tar xz
+# curl -s https://s3.amazonaws.com/vdtar/shibboleth-sp-${SHIBBOLETH_SP_VERSION}.tar.gz | tar xz
+#-C ${BUILD_DIR}
+# apt-get install libapache2-mod-shib2
+# a2enmod auth_basic
+# a2enmod shib2
+
+echo "-----> Exporting Passenger to PATH and relaxing permissions for Apache"
+ln -s $SHIB_HOME /app/shibboleth-sp2
+export SHIBSP_CONFIG=/etc/shibboleth
+mkdir -p $SHIBSP_CONFIG
+
+export APACHE_RUN_USER=www-data
+export APACHE_RUN_GROUP=www-data
+export APACHE_PID_FILE=/var/run/apache2.pid
+export LD_LIBRARY_PATH=/app/shibboleth-sp2/lib
+
+
+PATH=/app/shibboleth-sp2:$SHIBSP_CONFIG:${BUILD_DIR}/passenger-${PASSENGER_VERSION}/bin:$PATH
+export PATH
+
+# chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems/passenger-5.1.2"
+# chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems"
+# chmod o+x "$1/vendor/bundle/ruby/2.3.0"
+# chmod o+x "$1/vendor/bundle/ruby"
+# chmod o+x "$1/vendor/bundle"
+# chmod o+x "$1/vendor"
+# chmod o+x "$1"
+# chmod o+x "/tmp"
+#
+# apt-get install apache2-mpm-worker
+# apt-get install apache2-dev
+# apt-get install libapr1-dev
+# apt-get install libaprutil1-dev
+#
+# passenger-install-apache2-module
+
+echo "-----> apache-passenger-shibboleth-buildpack: Installed Apache, Passenger, and Shibboleth for ${STACK} to $BUILD_DIR/opt"
+
+exit 0
