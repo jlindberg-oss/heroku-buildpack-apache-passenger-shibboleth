@@ -31,6 +31,14 @@ if [ -z "$APACHE_VERSION" ]; then
 	APACHE_VERSION="2.4.29"
 fi
 
+if [ -z "$APACHE_APR_VERSION" ]; then
+	APACHE_APR_VERSION="1.6.3"
+fi
+
+if [ -z "$APACHE_APR_UTIL_VERSION" ]; then
+	APACHE_APR_UTIL_VERSION="1.6.1"
+fi
+
 PREFIX_PATH="/app/apache"
 if [ -z "$CONFIGURE_ARGS" ]; then
 	CONFIGURE_ARGS="--prefix=$PREFIX_PATH \
@@ -67,13 +75,16 @@ if [ "$CACHED_APACHE_VERSION" != "$APACHE_VERSION" ]; then
 
 	cd "$APACHE_SRC_DIR"
 
-  mkdir "./srclib" && mkdir "./srclib/apr" && mkdir "./srclib/apr-util"
-  chmod o+x "./srclib" && chmod o+x "./srclib/apr" && chmod o+x "./srclib/apr-util"
+  # mkdir "./srclib" && mkdir "./srclib/apr" && mkdir "./srclib/apr-util"
+  # chmod o+x "./srclib" && chmod o+x "./srclib/apr" && chmod o+x "./srclib/apr-util"
 
-  info "Downloading Apache APR 1.6.3 and APR-Util 1.6.1..."
-  curl -s http://apache.mesi.com.ar/apr/apr-1.6.3.tar.gz | tar xz - -C "./srclib/apr"
-  curl -s http://apache.mesi.com.ar/apr/apr-util-1.6.1.tar.gz | tar xz - -C "./srclib/apr-util"
-
+  cd srclib
+  info "Downloading Apache APR ${APACHE_APR_VERSION} and APR-Util ${APACHE_APR_UTIL_VERSION}..."
+  curl -s http://apache.mesi.com.ar/apr/apr-${APACHE_APR_VERSION}.tar.gz | tar xz
+  curl -s http://apache.mesi.com.ar/apr/apr-util-${APACHE_APR_UTIL_VERSION}.tar.gz | tar xz
+  mv apr-${APACHE_APR_VERSION} apr
+  mv apr-util-${APACHE_APR_UTIL_VERSION} apr-util
+  cd ..
 
 	head "Configuring Apache with args: $CONFIGURE_ARGS"
 	./configure $CONFIGURE_ARGS 2>&1 | indent
