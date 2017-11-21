@@ -37,6 +37,7 @@ XMLTOOLING_VERSION='1.6.2'
 OPENSAML_VERSION='2.6.1'
 SHIBBOLETH_VERSION='2.6.1'
 
+curl -s https://dl.bintray.com/boostorg/release/1.65.1/source/boost_1_65_1.tar.gz | tar xz
 curl -s https://shibboleth.net/downloads/log4shib/latest/log4shib-${LOG4SHIB_VERSION}.tar.gz | tar xz
 curl -s https://shibboleth.net/downloads/c++-opensaml/latest/xmltooling-${XMLTOOLING_VERSION}.tar.gz | tar xz
 curl -s https://shibboleth.net/downloads/c++-opensaml/latest/opensaml-${OPENSAML_VERSION}.tar.gz | tar xz
