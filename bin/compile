@@ -46,8 +46,8 @@ curl -s https://shibboleth.net/downloads/service-provider/latest/shibboleth-sp-$
 # tar xvfz opensaml-${OPENSAML_VERSION}.tar.gz
 # tar xvfz shibboleth-sp-${SHIBBOLETH_VERSION}.tar.gz
 
-export SHIB_HOME=/opt/shibboleth-sp-${SHIBBOLETH_VERSION}
-mkdir $SHIB_HOME
+export SHIB_HOME=/app/shibboleth-sp-${SHIBBOLETH_VERSION}
+mkdir -p $SHIB_HOME
 pushd $MYBUILD/log4shib-${LOG4SHIB_VERSION}/ && ./configure --disable-static --disable-doxygen --prefix=$SHIB_HOME && make && make install && popd
 pushd $MYBUILD/xmltooling-${XMLTOOLING_VERSION}/ && ./configure --with-log4shib=$SHIB_HOME --prefix=$SHIB_HOME -C && make && make install && popd
 pushd $MYBUILD/opensaml-${OPENSAML_VERSION}/ && ./configure --prefix=$SHIB_HOME --with-log4shib=$SHIB_HOME -C && make && make install && popd
@@ -170,17 +170,17 @@ echo "export PATH=\"/app/apache/bin:/app/apache/sbin:\$PATH\";" > $BUILD_DIR/.pr
 # a2enmod shib2
 
 echo "-----> Exporting Passenger to PATH and relaxing permissions for Apache"
-ln -s $SHIB_HOME /opt/shibboleth-sp2
+ln -s $SHIB_HOME /app/shibboleth-sp2
 export SHIBSP_CONFIG=/etc/shibboleth
 mkdir -p $SHIBSP_CONFIG
 
 export APACHE_RUN_USER=www-data
 export APACHE_RUN_GROUP=www-data
 export APACHE_PID_FILE=/var/run/apache2.pid
-export LD_LIBRARY_PATH=/opt/shibboleth-sp2/lib
+export LD_LIBRARY_PATH=/app/shibboleth-sp2/lib
 
 
-PATH=/opt/shibboleth-sp2:$SHIBSP_CONFIG:${BUILD_DIR}/passenger-${PASSENGER_VERSION}/bin:$PATH
+PATH=/app/shibboleth-sp2:$SHIBSP_CONFIG:${BUILD_DIR}/passenger-${PASSENGER_VERSION}/bin:$PATH
 export PATH
 
 # chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems/passenger-5.1.2"
