@@ -22,6 +22,40 @@ BUILDPACK_HOME=$(cd $(dirname $0); cd ..; pwd)	# buildpack directory
 source "$BUILDPACK_HOME/scripts/common.sh"
 trap build_failed ERR # Provide hook to deal with errors
 
+apt-get install --yes wget
+# The following packages are required to compile the Shibboleth SP daemon and the Shibboleth Apache module.
+
+apt-get install --yes gcc g++ make libssl0.9.8 libssl-dev libcurl3 libcurl3-dev libxerces-c28 libxerces-c2-dev libxml-security-c14 libxml-security-c-dev apache2-threaded-dev
+# Finally, define, create and change into a build directory to execute the build process.
+
+export MYBUILD=~/shibsp-build
+mkdir -p $MYBUILD
+cd $MYBUILD
+
+LOG4SHIB_VERSION='1.0.9'
+XMLTOOLING_VERSION='1.6.2'
+OPENSAML_VERSION='2.6.1'
+SHIBBOLETH_VERSION='2.6.1'
+
+wget https://shibboleth.net/downloads/log4shib/latest/log4shib-${LOG4SHIB_VERSION}.tar.gz
+wget https://shibboleth.net/downloads/c++-opensaml/latest/xmltooling-${XMLTOOLING_VERSION}.tar.gz
+wget https://shibboleth.net/downloads/c++-opensaml/latest/opensaml-${OPENSAML_VERSION}.tar.gz
+wget https://shibboleth.net/downloads/service-provider/latest/shibboleth-sp-${SHIBBOLETH_VERSION}.tar.gz
+tar xvfz log4shib-${LOG4SHIB_VERSION}.tar.gz
+tar xvfz xmltooling-${XMLTOOLING_VERSION}.tar.gz
+tar xvfz opensaml-${OPENSAML_VERSION}.tar.gz
+tar xvfz shibboleth-sp-${SHIBBOLETH_VERSION}.tar.gz
+
+export SHIB_HOME=/opt/shibboleth-sp-${SHIBBOLETH_VERSION}
+mkdir $SHIB_HOME
+pushd $MYBUILD/log4shib-${LOG4SHIB_VERSION}/ && ./configure --disable-static --disable-doxygen --prefix=$SHIB_HOME && make && make install && popd
+pushd $MYBUILD/xmltooling-${XMLTOOLING_VERSION}/ && ./configure --with-log4shib=$SHIB_HOME --prefix=$SHIB_HOME -C && make && make install && popd
+pushd $MYBUILD/opensaml-${OPENSAML_VERSION}/ && ./configure --prefix=$SHIB_HOME --with-log4shib=$SHIB_HOME -C && make && make install && popd
+pushd $MYBUILD/shibboleth-${SHIBBOLETH_VERSION}/ && ./configure --with-saml=$SHIB_HOME --enable-apache-22 --with-log4shib=$SHIB_HOME --with-xmltooling=$SHIB_HOME --prefix=$SHIB_HOME -C && make && make install && popd
+
+echo "-----> Downloading and Unzipping Apache ${PASSENGER_VERSION} and Shibboleth ${SHIBBOLETH_SP_VERSION}"
+cd $BUILD_DIR
+
 if [ -f "$BUILD_DIR/.apache/.apache.cfg" ]; then
 	info "Found $BUILD_DIR/.apache/.apache.cfg"
 	source "$BUILD_DIR/.apache/.apache.cfg"
@@ -121,22 +155,32 @@ mkdir -p $BUILD_DIR/.profile.d
 echo "export PATH=\"/app/apache/bin:/app/apache/sbin:\$PATH\";" > $BUILD_DIR/.profile.d/apache.sh
 
 
-
-
-
-
-
-
-echo "-----> Downloading and Unzipping Passenger ${PASSENGER_VERSION} and Shibboleth ${SHIBBOLETH_SP_VERSION}"
-cd $BUILD_DIR
+apt-get install --yes libapache2-mod-shib2
+a2enmod auth_basic
+a2enmod shib2
+a2enmod ssl
+/etc/init.d/apache2 restart
 
 # curl -s https://s3.amazonaws.com/vdtar/httpd-${APACHE_VERSION}.tar.gz       | tar xz
 # curl -s https://s3.amazonaws.com/vdtar/passenger-${PASSENGER_VERSION}.tar.gz | tar xz
-curl -s https://s3.amazonaws.com/vdtar/shibboleth-sp-${SHIBBOLETH_SP_VERSION}.tar.gz | tar xz
+# curl -s https://s3.amazonaws.com/vdtar/shibboleth-sp-${SHIBBOLETH_SP_VERSION}.tar.gz | tar xz
 #-C ${BUILD_DIR}
+# apt-get install libapache2-mod-shib2
+# a2enmod auth_basic
+# a2enmod shib2
 
 echo "-----> Exporting Passenger to PATH and relaxing permissions for Apache"
-PATH==${BUILD_DIR}/passenger-${PASSENGER_VERSION}/bin:$PATH
+ln -s $SHIB_HOME /opt/shibboleth-sp2
+export SHIBSP_CONFIG=/etc/shibboleth
+mkdir -p $SHIBSP_CONFIG
+
+export APACHE_RUN_USER=www-data
+export APACHE_RUN_GROUP=www-data
+export APACHE_PID_FILE=/var/run/apache2.pid
+export LD_LIBRARY_PATH=/opt/shibboleth-sp2/lib
+
+
+PATH=/opt/shibboleth-sp2:$SHIBSP_CONFIG:${BUILD_DIR}/passenger-${PASSENGER_VERSION}/bin:$PATH
 export PATH
 
 # chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems/passenger-5.1.2"
