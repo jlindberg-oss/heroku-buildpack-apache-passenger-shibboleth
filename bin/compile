@@ -1,27 +1,122 @@
 #!/usr/bin/env bash
 
-#turn on echo to actually output to console
-set -e
+####### Configure environment
+set -e			# fail fast
+set -o pipefail	# don't ignore exit codes when piping output
+# set -x		# enable debugging
 
-#-----> Setting temporary variables
+# Configure directories
+BUILD_DIR=$1	# the location of the app
+CACHE_DIR=$2	# a location the buildpack can use to cache build artifacts between builds
+ENV_DIR=$3		# contains a file for each of the application’s configuration variables
+
 STACK=${STACK:-heroku-16}
-PASSENGER_ROOT=$1
+APACHE_PATH="apache"
 APACHE_VERSION='2.4.29'
 PASSENGER_VERSION='5.1.11'
 SHIBBOLETH_SP_VERSION='2.6.1'
 
+BUILDPACK_HOME=$(cd $(dirname $0); cd ..; pwd)	# buildpack directory
 
-#-----> Downloading and Unzipping Passenger ${PASSENGER_VERSION} and Shibboleth ${SHIBBOLETH_SP_VERSION}
-cd $1
+# Load some convenience functions like info(), echo(), and indent()
+source "$BUILDPACK_HOME/scripts/common.sh"
+trap build_failed ERR # Provide hook to deal with errors
+
+if [ -f "$BUILD_DIR/.apache/.apache.cfg" ]; then
+	info "Found $BUILD_DIR/.apache/.apache.cfg"
+	source "$BUILD_DIR/.apache/.apache.cfg"
+fi
+
+if [ -z "$APACHE_VERSION" ]; then
+	APACHE_VERSION="2.4.12"
+fi
+
+PREFIX_PATH="/app/apache"
+if [ -z "$CONFIGURE_ARGS" ]; then
+	CONFIGURE_ARGS="--prefix=$PREFIX_PATH \
+		--enable-dav \
+		--enable-dav-lock \
+		--with-included-apr \
+		--enable-layout=GNU \
+		--enable-mods-shared=all \
+		--enable-rewrite \
+		--enable-deflate \
+		--with-mpm=event"
+else
+	CONFIGURE_ARGS="--prefix=$PREFIX_PATH $CONFIGURE_ARGS"
+fi
+
+# Load config vars into environment
+export_env_dir $ENV_DIR
+
+CACHED_APACHE_VERSION=$(cat $CACHE_DIR/apache/.apache-version 2>/dev/null || true)
+if [ "$CACHED_APACHE_VERSION" != "$APACHE_VERSION" ]; then
+	info "Apache version changed since last build; old: $CACHED_APACHE_VERSION -> new: $APACHE_VERSION"
+	APACHE_SRC_DIR="httpd-$APACHE_VERSION"
+
+	info "Purge cached Apache..."
+	rm -rf "$CACHE_DIR/apache"
+
+	cd "$BUILD_DIR"
+
+	info "Downloading Apache $APACHE_VERSION..."
+	curl -L http://www.us.apache.org/dist//httpd/httpd-$APACHE_VERSION.tar.gz | tar xz
+	curl -L http://www.us.apache.org/dist//httpd/httpd-$APACHE_VERSION-deps.tar.gz | tar xz
+
+	cd "$APACHE_SRC_DIR"
+
+	head "Configuring Apache with args: $CONFIGURE_ARGS"
+	./configure $CONFIGURE_ARGS 2>&1 | indent
+	head "Compiling with Make"
+	make -s -j 9 2>&1 | indent
+	head "Installing with Make"
+	make install -s | indent
+
+	info "Saving Apache version file..."
+	echo $APACHE_VERSION > "$PREFIX_PATH/.apache-version"
+
+	info "Saving Apache installation to cache..."
+	cp -R "$PREFIX_PATH" "$CACHE_DIR"
+
+	info "Cleaning up Apache source files..."
+	cd ..
+	rm -rf "$APACHE_SRC_DIR"
+fi
+
+info "Copying Apache $APACHE_VERSION into $BUILD_DIR ..."
+cp -R "$CACHE_DIR/apache" "$BUILD_DIR"
+
+if [ -d "$BUILD_DIR/.apache/conf" ]; then
+	info "Installing configuration files..."
+	cp -R $BUILD_DIR/.apache/conf/* $BUILD_DIR/apache/etc/apache2
+fi
+
+info "Installing startup script..."
+cp "$BUILDPACK_HOME/scripts/boot.sh" $BUILD_DIR
+chmod +x "$BUILD_DIR/boot.sh"
+
+info "Building runtime environment"
+mkdir -p $BUILD_DIR/.profile.d
+echo "export PATH=\"/app/apache/bin:/app/apache/sbin:\$PATH\";" > $BUILD_DIR/.profile.d/apache.sh
+
+
+
+
+
+
+
+
+echo "-----> Downloading and Unzipping Passenger ${PASSENGER_VERSION} and Shibboleth ${SHIBBOLETH_SP_VERSION}"
+cd $BUILD_DIR
 
 # curl -s https://s3.amazonaws.com/vdtar/httpd-${APACHE_VERSION}.tar.gz       | tar xz
 # curl -s https://s3.amazonaws.com/vdtar/passenger-${PASSENGER_VERSION}.tar.gz | tar xz
 curl -s https://s3.amazonaws.com/vdtar/shibboleth-sp-${SHIBBOLETH_SP_VERSION}.tar.gz | tar xz
-#-C ${PASSENGER_ROOT}
+#-C ${BUILD_DIR}
 
-#-----> Exporting Passenger to PATH and relaxing permissions for Apache
-# PATH==${PASSENGER_ROOT}/passenger-${PASSENGER_VERSION}/bin:$PATH
-# export PATH
+echo "-----> Exporting Passenger to PATH and relaxing permissions for Apache"
+PATH==${BUILD_DIR}/passenger-${PASSENGER_VERSION}/bin:$PATH
+export PATH
 
 # chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems/passenger-5.1.2"
 # chmod o+x "$1/vendor/bundle/ruby/2.3.0/gems"
@@ -31,7 +126,7 @@ curl -s https://s3.amazonaws.com/vdtar/shibboleth-sp-${SHIBBOLETH_SP_VERSION}.ta
 # chmod o+x "$1/vendor"
 # chmod o+x "$1"
 # chmod o+x "/tmp"
-
+#
 # apt-get install apache2-mpm-worker
 # apt-get install apache2-dev
 # apt-get install libapr1-dev
@@ -39,6 +134,6 @@ curl -s https://s3.amazonaws.com/vdtar/shibboleth-sp-${SHIBBOLETH_SP_VERSION}.ta
 #
 # passenger-install-apache2-module
 
-echo "-----> apache-passenger-shibboleth-buildpack: Installed Apache, Passenger, and Shibboleth for ${STACK} to $1/opt"
+echo "-----> apache-passenger-shibboleth-buildpack: Installed Apache, Passenger, and Shibboleth for ${STACK} to $BUILD_DIR/opt"
 
 exit 0
