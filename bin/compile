@@ -12,7 +12,7 @@ ENV_DIR=$3		# contains a file for each of the application’s configuration vari
 
 STACK=${STACK:-heroku-16}
 APACHE_PATH="apache"
-APACHE_VERSION='2.4.29'
+
 PASSENGER_VERSION='5.1.11'
 SHIBBOLETH_SP_VERSION='2.6.1'
 
@@ -28,7 +28,7 @@ if [ -f "$BUILD_DIR/.apache/.apache.cfg" ]; then
 fi
 
 if [ -z "$APACHE_VERSION" ]; then
-	APACHE_VERSION="2.4.12"
+	APACHE_VERSION="2.4.29"
 fi
 
 PREFIX_PATH="/app/apache"
@@ -60,8 +60,8 @@ if [ "$CACHED_APACHE_VERSION" != "$APACHE_VERSION" ]; then
 	cd "$BUILD_DIR"
 
 	info "Downloading Apache $APACHE_VERSION..."
-	curl -L http://www.us.apache.org/dist//httpd/httpd-$APACHE_VERSION.tar.gz | tar xz
-	curl -L http://www.us.apache.org/dist//httpd/httpd-$APACHE_VERSION-deps.tar.gz | tar xz
+	curl -L http://www.us.apache.org/dist/httpd/httpd-$APACHE_VERSION.tar.gz | tar xz
+	# curl -L http://www.us.apache.org/dist/httpd/httpd-$APACHE_VERSION-deps.tar.gz | tar xz
 
 	cd "$APACHE_SRC_DIR"
 
@@ -92,7 +92,7 @@ if [ -d "$BUILD_DIR/.apache/conf" ]; then
 fi
 
 info "Installing startup script..."
-cp "$BUILDPACK_HOME/scripts/boot.sh" $BUILD_DIR
+cp "$BUILDPACK_HOME/scripts/boot.sh" "$BUILD_DIR/boot.sh"
 chmod +x "$BUILD_DIR/boot.sh"
 
 info "Building runtime environment"
