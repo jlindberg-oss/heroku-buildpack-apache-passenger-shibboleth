@@ -22,10 +22,10 @@ BUILDPACK_HOME=$(cd $(dirname $0); cd ..; pwd)	# buildpack directory
 source "$BUILDPACK_HOME/scripts/common.sh"
 trap build_failed ERR # Provide hook to deal with errors
 
-apt-get install --yes wget
-# The following packages are required to compile the Shibboleth SP daemon and the Shibboleth Apache module.
-
-apt-get install --yes gcc g++ make libssl0.9.8 libssl-dev libcurl3 libcurl3-dev libxerces-c28 libxerces-c2-dev libxml-security-c14 libxml-security-c-dev apache2-threaded-dev
+# apt-get install --yes wget
+# # The following packages are required to compile the Shibboleth SP daemon and the Shibboleth Apache module.
+#
+# apt-get install --yes gcc g++ make libssl0.9.8 libssl-dev libcurl3 libcurl3-dev libxerces-c28 libxerces-c2-dev libxml-security-c14 libxml-security-c-dev apache2-threaded-dev
 # Finally, define, create and change into a build directory to execute the build process.
 
 export MYBUILD=~/shibsp-build
@@ -155,10 +155,10 @@ mkdir -p $BUILD_DIR/.profile.d
 echo "export PATH=\"/app/apache/bin:/app/apache/sbin:\$PATH\";" > $BUILD_DIR/.profile.d/apache.sh
 
 
-apt-get install --yes libapache2-mod-shib2
-a2enmod auth_basic
-a2enmod shib2
-a2enmod ssl
+# apt-get install --yes libapache2-mod-shib2
+# a2enmod auth_basic
+# a2enmod shib2
+# a2enmod ssl
 /etc/init.d/apache2 restart
 
 # curl -s https://s3.amazonaws.com/vdtar/httpd-${APACHE_VERSION}.tar.gz       | tar xz
