@@ -54,24 +54,26 @@ CACHED_APACHE_VERSION=$(cat $CACHE_DIR/apache/.apache-version 2>/dev/null || tru
 if [ "$CACHED_APACHE_VERSION" != "$APACHE_VERSION" ]; then
 	info "Apache version changed since last build; old: $CACHED_APACHE_VERSION -> new: $APACHE_VERSION"
 	APACHE_SRC_DIR="httpd-$APACHE_VERSION"
-  CONFIGURE_ARGS="$CONFIGURE_ARGS "
-  mkdir "$APACHE_SRC_DIR/srclib" && mkdir "$APACHE_SRC_DIR/srclib/apr" && mkdir "$APACHE_SRC_DIR/srclib/apr-util"
-  chmod o+x "$APACHE_SRC_DIR/srclib" && chmod o+x "$APACHE_SRC_DIR/srclib/apr" && chmod o+x "$APACHE_SRC_DIR/srclib/apr-util"
 
 	info "Purge cached Apache..."
 	rm -rf "$CACHE_DIR/apache"
 
 
-  curl -L http://apache.mesi.com.ar/apr/apr-1.6.3.tar.gz | tar xz -C "$APACHE_SRC_DIR/srclib/apr"
-  curl -L http://apache.mesi.com.ar/apr/apr-util-1.6.1.tar.gz | tar xz -C "$APACHE_SRC_DIR/srclib/apr-util"
-
   cd "$BUILD_DIR"
+
+  mkdir "./$APACHE_SRC_DIR/srclib" && mkdir "./$APACHE_SRC_DIR/srclib/apr" && mkdir "./$APACHE_SRC_DIR/srclib/apr-util"
+  chmod o+x "./$APACHE_SRC_DIR/srclib" && chmod o+x "./$APACHE_SRC_DIR/srclib/apr" && chmod o+x "./$APACHE_SRC_DIR/srclib/apr-util"
 
   info "Downloading Apache $APACHE_VERSION..."
 	curl -L http://www.us.apache.org/dist/httpd/httpd-$APACHE_VERSION.tar.gz | tar xz
 	# curl -L http://www.us.apache.org/dist/httpd/httpd-$APACHE_VERSION-deps.tar.gz | tar xz
 
 	cd "$APACHE_SRC_DIR"
+
+  info "Downloading Apache APR 1.6.3 and APR-Util 1.6.1..."
+  curl -L http://apache.mesi.com.ar/apr/apr-1.6.3.tar.gz | tar xz -C "./srclib/apr"
+  curl -L http://apache.mesi.com.ar/apr/apr-util-1.6.1.tar.gz | tar xz -C "./srclib/apr-util"
+
 
 	head "Configuring Apache with args: $CONFIGURE_ARGS"
 	./configure $CONFIGURE_ARGS 2>&1 | indent
